@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCNote - Tracker Manga</title>
+    <style>
+        body {
+            background-color: #2e2e2e;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #5865F2;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #4752C4;
+        }
+        #manga-list {
+            margin-top: 20px;
+        }
+        .manga-item {
+            background: #40444B;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📖 Manga Tracker</h1>
+    <input type="text" id="manga-name" placeholder="Nama Manga">
+    <input type="number" id="chapter-number" placeholder="Chapter" min="1">
+    <input type="number" id="rating" placeholder="Rating (1-10)" min="1" max="10">
+    <button onclick="saveManga()">Simpan</button>
+    <button onclick="googleSignIn()">Login dengan Google</button>
+    <div id="manga-list"></div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+
+    <script>
+        // Firebase konfigurasi (GANTI DENGAN DATA ANDA)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        // Simpan manga ke Firebase
+        function saveManga() {
+            const name = document.getElementById("manga-name").value;
+            const chapter = document.getElementById("chapter-number").value;
+            const rating = document.getElementById("rating").value;
+
+            if (!name || !chapter || !rating) {
+                alert("Silakan isi semua kolom!");
+                return;
+            }
+
+            db.ref("manga/" + name).set({
+                chapter: chapter,
+                rating: rating
+            }).then(() => {
+                alert("Tersimpan!");
+                loadMangaList();
+            }).catch((error) => {
+                console.error("Gagal menyimpan:", error);
+            });
+        }
+
+        // Ambil data manga dari Firebase
+        function loadMangaList() {
+            const mangaListDiv = document.getElementById("manga-list");
+            mangaListDiv.innerHTML = "<h2>Daftar Manga:</h2>";
+
+            db.ref("manga/").once("value", (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    Object.keys(data).forEach((key) => {
+                        const manga = data[key];
+                        const div = document.createElement("div");
+                        div.className = "manga-item";
+                        div.innerHTML = `${key} - Ch. ${manga.chapter} - ⭐ ${manga.rating} 
+                            <button onclick="deleteManga('${key}')">❌</button>`;
+                        mangaListDiv.appendChild(div);
+                    });
+                } else {
+                    mangaListDiv.innerHTML += "<p>Tidak ada data.</p>";
+                }
+            });
+        }
+
+        // Hapus manga dari Firebase
+        function deleteManga(name) {
+            db.ref("manga/" + name).remove().then(() => {
+                alert("Dihapus!");
+                loadMangaList();
+            }).catch((error) => {
+                console.error("Gagal menghapus:", error);
+            });
+        }
+
+        // Google Login
+        function googleSignIn() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).then((result) => {
+                alert("Masuk sebagai " + result.user.displayName);
+            }).catch((error) => {
+                console.error("Login gagal:", error);
+            });
+        }
+
+        // Muat daftar manga saat halaman dimuat
+        window.onload = loadMangaList;
+    </script>
+</body>
+</html>
